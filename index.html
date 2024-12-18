@@ -162,8 +162,11 @@
                 fetch(url)
                     .then(response => response.json())
                     .then(data => {
-                        const address = data.display_name;
-                        document.getElementById('address').textContent = `住所: ${address}`;
+                        // 住所のフォーマットを変更
+                        const addressParts = data.display_name.split(',').map(part => part.trim());
+                        const address = addressParts.slice(0, -2).reverse().join(''); // 郵便番号と日本を削除し、順序を逆に
+
+                        document.getElementById('address').textContent = address; // 「住所:」を削除
 
                         // 保存ボタンのイベントリスナーを設定
                         setUpSaveButton(address, lat, lng);
@@ -230,7 +233,7 @@
                                 localStorage.setItem('historyData', JSON.stringify(savedData));
                             })
                             .catch(error => {
-                                console.error('��ラー:', error);
+                                console.error('エラー:', error);
                                 alert('住所の更新に失敗しました。');
                             });
                     });
