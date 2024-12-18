@@ -212,14 +212,30 @@
             document.getElementById('address').textContent = '位置情報の取得に失敗しました。';
         }
 
+        function jsonToCsv(jsonData) {
+            const csvRows = [];
+            const headers = Object.keys(jsonData[0]);
+            csvRows.push(headers.join(','));
+
+            jsonData.forEach(item => {
+                const values = headers.map(header => {
+                    const escaped = ('' + item[header]).replace(/"/g, '\\"');
+                    return `"${escaped}"`;
+                });
+                csvRows.push(values.join(','));
+            });
+
+            return csvRows.join('\n');
+        }
+
         document.getElementById('exportButton').addEventListener('click', function() {
             const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
-            const jsonData = JSON.stringify(savedData, null, 2); // JSONを整形して出力
-            const blob = new Blob([jsonData], { type: 'application/json' });
+            const csvData = jsonToCsv(savedData);
+            const blob = new Blob([csvData], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'historyData.json';
+            a.download = 'historyData.csv';
             a.click();
             URL.revokeObjectURL(url);
         });
