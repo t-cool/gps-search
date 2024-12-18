@@ -26,6 +26,7 @@
             <tr>
                 <th>住所</th>
                 <th>メモ</th>
+                <th>削除</th>
             </tr>
         </thead>
         <tbody>
@@ -37,28 +38,25 @@
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
         } else {
-            document.getElementById('address').textContent = 'このブラウザでは位置情報が使用できません。';
+            document.getElementById('address').textContent = 'このブラウザでは位置情報が利用できません。';
         }
 
         function successCallback(position) {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
 
-            // Nominatim APIのエンドポイント
             const endpoint = 'https://nominatim.openstreetmap.org/reverse';
-
-            // パラメータを設定
             const params = new URLSearchParams({
                 lat: lat,
                 lon: lng,
                 format: 'json',
-                'accept-language': 'ja' // 日本語で住所を取得
+                'accept-language': 'ja'
             });
 
-            // リクエストURLを生成
             const url = `${endpoint}?${params.toString()}`;
 
-            // HTTP GETリクエストを送信
+            const historyTableBody = document.getElementById('history').getElementsByTagName('tbody')[0];
+
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
@@ -67,37 +65,57 @@
 
                     document.getElementById('saveButton').addEventListener('click', function() {
                         const memo = document.getElementById('memo').value;
-                        const history = document.getElementById('history').getElementsByTagName('tbody')[0];
                         const row = document.createElement('tr');
                         const addressCell = document.createElement('td');
                         const memoCell = document.createElement('td');
+                        const deleteCell = document.createElement('td');
+                        const deleteButton = document.createElement('button');
 
                         addressCell.textContent = address;
                         memoCell.textContent = memo;
+                        deleteButton.textContent = '削除';
 
+                        deleteButton.addEventListener('click', function() {
+                            historyTableBody.removeChild(row);
+                            const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
+                            const updatedData = savedData.filter(item => !(item.address === address && item.memo === memo));
+                            localStorage.setItem('historyData', JSON.stringify(updatedData));
+                        });
+
+                        deleteCell.appendChild(deleteButton);
                         row.appendChild(addressCell);
                         row.appendChild(memoCell);
-                        history.appendChild(row);
+                        row.appendChild(deleteCell);
+                        historyTableBody.appendChild(row);
 
-                        // localStorageに保存
                         const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
                         savedData.push({ address, memo });
                         localStorage.setItem('historyData', JSON.stringify(savedData));
                     });
 
-                    // ページ読み込み時にlocalStorageからデータを読み込む
                     const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
                     savedData.forEach(item => {
                         const row = document.createElement('tr');
                         const addressCell = document.createElement('td');
                         const memoCell = document.createElement('td');
+                        const deleteCell = document.createElement('td');
+                        const deleteButton = document.createElement('button');
 
                         addressCell.textContent = item.address;
                         memoCell.textContent = item.memo;
+                        deleteButton.textContent = '削除';
 
+                        deleteButton.addEventListener('click', function() {
+                            historyTableBody.removeChild(row);
+                            const updatedData = savedData.filter(data => !(data.address === item.address && data.memo === item.memo));
+                            localStorage.setItem('historyData', JSON.stringify(updatedData));
+                        });
+
+                        deleteCell.appendChild(deleteButton);
                         row.appendChild(addressCell);
                         row.appendChild(memoCell);
-                        history.appendChild(row);
+                        row.appendChild(deleteCell);
+                        historyTableBody.appendChild(row);
                     });
                 })
                 .catch(error => {
