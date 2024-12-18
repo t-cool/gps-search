@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>GPS</title>
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>住所を取得</h1>
+    <p id="address">住所を取得中...</p>
+    <input type="text" id="memo" placeholder="メモを入力">
+    <button id="saveButton">保存</button>
+    <button id="exportButton">データをエクスポート</button>
+    <h2>履歴</h2>
+    <table id="history">
+        <thead>
+            <tr>
+                <th>住所</th>
+                <th>メモ</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        // 現在地の取得
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+        } else {
+            document.getElementById('address').textContent = 'このブラウザでは位置情報が使用できません。';
+        }
+
+        function successCallback(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            // Nominatim APIのエンドポイント
+            const endpoint = 'https://nominatim.openstreetmap.org/reverse';
+
+            // パラメータを設定
+            const params = new URLSearchParams({
+                lat: lat,
+                lon: lng,
+                format: 'json',
+                'accept-language': 'ja' // 日本語で住所を取得
+            });
+
+            // リクエストURLを生成
+            const url = `${endpoint}?${params.toString()}`;
+
+            // HTTP GETリクエストを送信
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const address = data.display_name;
+                    document.getElementById('address').textContent = `住所: ${address}`;
+
+                    document.getElementById('saveButton').addEventListener('click', function() {
+                        const memo = document.getElementById('memo').value;
+                        const history = document.getElementById('history').getElementsByTagName('tbody')[0];
+                        const row = document.createElement('tr');
+                        const addressCell = document.createElement('td');
+                        const memoCell = document.createElement('td');
+
+                        addressCell.textContent = address;
+                        memoCell.textContent = memo;
+
+                        row.appendChild(addressCell);
+                        row.appendChild(memoCell);
+                        history.appendChild(row);
+
+                        // localStorageに保存
+                        const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
+                        savedData.push({ address, memo });
+                        localStorage.setItem('historyData', JSON.stringify(savedData));
+                    });
+
+                    // ページ読み込み時にlocalStorageからデータを読み込む
+                    const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
+                    savedData.forEach(item => {
+                        const row = document.createElement('tr');
+                        const addressCell = document.createElement('td');
+                        const memoCell = document.createElement('td');
+
+                        addressCell.textContent = item.address;
+                        memoCell.textContent = item.memo;
+
+                        row.appendChild(addressCell);
+                        row.appendChild(memoCell);
+                        history.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('エラー:', error);
+                    document.getElementById('address').textContent = '住所の取得に失敗しました。';
+                });
+        }
+
+        function errorCallback(error) {
+            document.getElementById('address').textContent = '位置情報の取得に失敗しました。';
+        }
+
+        document.getElementById('exportButton').addEventListener('click', function() {
+            const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
+            const jsonData = JSON.stringify(savedData, null, 2); // JSONを整形して出力
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'historyData.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>
