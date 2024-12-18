@@ -114,12 +114,10 @@
         <thead>
             <tr>
                 <th>時刻</th>
-                <th>経度</th>
-                <th>緯度</th>
                 <th>住所</th>
                 <th>メモ</th>
                 <th>更新</th>
-                <th></th>
+                <th>削除</th>
             </tr>
         </thead>
         <tbody>
@@ -181,8 +179,6 @@
                     const memo = document.getElementById('memo').value;
                     const row = document.createElement('tr');
                     const timeCell = document.createElement('td');
-                    const lngCell = document.createElement('td');
-                    const latCell = document.createElement('td');
                     const addressCell = document.createElement('td');
                     const memoCell = document.createElement('td');
                     const updateCell = document.createElement('td');
@@ -194,8 +190,6 @@
                     const formattedTime = `${now.getFullYear()}年${(now.getMonth() +1).toString().padStart(2, '0')}月${now.getDate().toString().padStart(2, '0')}日${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
                     timeCell.textContent = formattedTime;
-                    lngCell.textContent = lng.toFixed(6);
-                    latCell.textContent = lat.toFixed(6);
                     addressCell.textContent = address || '未取得';
                     memoCell.textContent = memo;
                     updateButton.textContent = '更新';
@@ -221,7 +215,7 @@
                                 // localStorageの該当データを更新
                                 const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
                                 for (let item of savedData) {
-                                    if (item.time === formattedTime && item.lng === lng && item.lat === lat && item.memo === memo) {
+                                    if (item.time === formattedTime && item.memo === memo) {
                                         item.address = newAddress;
                                         break;
                                     }
@@ -237,15 +231,13 @@
                     deleteButton.addEventListener('click', function() {
                         historyTableBody.removeChild(row);
                         const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
-                        const updatedData = savedData.filter(item => !(item.time === formattedTime && item.lng === lng && item.lat === lat && item.memo === memo));
+                        const updatedData = savedData.filter(item => !(item.time === formattedTime && item.memo === memo));
                         localStorage.setItem('historyData', JSON.stringify(updatedData));
                     });
 
                     updateCell.appendChild(updateButton);
                     deleteCell.appendChild(deleteButton);
                     row.appendChild(timeCell);
-                    row.appendChild(lngCell);
-                    row.appendChild(latCell);
                     row.appendChild(addressCell);
                     row.appendChild(memoCell);
                     row.appendChild(updateCell);
@@ -263,8 +255,6 @@
             savedData.forEach(item => {
                 const row = document.createElement('tr');
                 const timeCell = document.createElement('td');
-                const lngCell = document.createElement('td');
-                const latCell = document.createElement('td');
                 const addressCell = document.createElement('td');
                 const memoCell = document.createElement('td');
                 const updateCell = document.createElement('td');
@@ -273,8 +263,6 @@
                 const deleteButton = document.createElement('button');
 
                 timeCell.textContent = item.time || 'N/A';
-                lngCell.textContent = item.lng !== undefined ? item.lng.toFixed(6) : 'N/A';
-                latCell.textContent = item.lat !== undefined ? item.lat.toFixed(6) : 'N/A';
                 addressCell.textContent = item.address || '未取得';
                 memoCell.textContent = item.memo || 'N/A';
                 updateButton.textContent = '更新';
@@ -299,7 +287,7 @@
 
                             // localStorageの該当データを更新
                             for (let dataItem of savedData) {
-                                if (dataItem.time === item.time && dataItem.lng === item.lng && dataItem.lat === item.lat && dataItem.memo === item.memo) {
+                                if (dataItem.time === item.time && dataItem.memo === item.memo) {
                                     dataItem.address = newAddress;
                                     break;
                                 }
@@ -314,15 +302,13 @@
 
                 deleteButton.addEventListener('click', function() {
                     historyTableBody.removeChild(row);
-                    const updatedData = savedData.filter(data => !(data.time === item.time && data.lng === item.lng && data.lat === item.lat && data.memo === item.memo));
+                    const updatedData = savedData.filter(data => !(data.time === item.time && data.memo === item.memo));
                     localStorage.setItem('historyData', JSON.stringify(updatedData));
                 });
 
                 updateCell.appendChild(updateButton);
                 deleteCell.appendChild(deleteButton);
                 row.appendChild(timeCell);
-                row.appendChild(lngCell);
-                row.appendChild(latCell);
                 row.appendChild(addressCell);
                 row.appendChild(memoCell);
                 row.appendChild(updateCell);
