@@ -85,6 +85,22 @@
         td button:hover {
             background-color: #c82333;
         }
+
+        /* レスポンシブデザイン */
+        @media (max-width: 600px) {
+            input[type="text"], button {
+                width: 90%;
+                max-width: none;
+            }
+
+            table {
+                width: 100%;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -98,9 +114,12 @@
         <thead>
             <tr>
                 <th>時刻</th>
+                <th>経度</th>
+                <th>緯度</th>
                 <th>住所</th>
                 <th>メモ</th>
-                <th>削除</th>
+                <th>更新</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -131,87 +150,192 @@
 
             const historyTableBody = document.getElementById('history').getElementsByTagName('tbody')[0];
 
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    const address = data.display_name;
-                    document.getElementById('address').textContent = `住所: ${address}`;
+            // オンラインかどうかをチェック
+            const isOnline = navigator.onLine;
 
-                    document.getElementById('saveButton').addEventListener('click', function() {
-                        const memo = document.getElementById('memo').value;
-                        const historyTableBody = document.getElementById('history').getElementsByTagName('tbody')[0];
-                        const row = document.createElement('tr');
-                        const timeCell = document.createElement('td');
-                        const addressCell = document.createElement('td');
-                        const memoCell = document.createElement('td');
-                        const deleteCell = document.createElement('td');
-                        const deleteButton = document.createElement('button');
+            if (isOnline) {
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        const address = data.display_name;
+                        document.getElementById('address').textContent = `住所: ${address}`;
 
-                        const now = new Date();
-                        const formattedTime = `${now.getFullYear()}年${(now.getMonth() + 1).toString().padStart(2, '0')}月${now.getDate().toString().padStart(2, '0')}日${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+                        // 保存ボタンのイベントリスナーを設定
+                        setUpSaveButton(address, lat, lng);
+                    })
+                    .catch(error => {
+                        console.error('エラー:', error);
+                        document.getElementById('address').textContent = '住所の取得に失敗しました。';
+                        // オフライン時の処理
+                        setUpSaveButton(null, lat, lng);
+                    });
+            } else {
+                document.getElementById('address').textContent = 'オフラインです。住所は後で取得できます。';
+                // オフライン時の処理
+                setUpSaveButton(null, lat, lng);
+            }
 
-                        timeCell.textContent = formattedTime;
-                        addressCell.textContent = address;
-                        memoCell.textContent = memo;
-                        deleteButton.textContent = '削除';
+            // 保存ボタンの設定
+            function setUpSaveButton(address, lat, lng) {
+                document.getElementById('saveButton').addEventListener('click', function() {
+                    const memo = document.getElementById('memo').value;
+                    const row = document.createElement('tr');
+                    const timeCell = document.createElement('td');
+                    const lngCell = document.createElement('td');
+                    const latCell = document.createElement('td');
+                    const addressCell = document.createElement('td');
+                    const memoCell = document.createElement('td');
+                    const updateCell = document.createElement('td');
+                    const deleteCell = document.createElement('td');
+                    const updateButton = document.createElement('button');
+                    const deleteButton = document.createElement('button');
 
-                        deleteButton.addEventListener('click', function() {
-                            historyTableBody.removeChild(row);
-                            const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
-                            const updatedData = savedData.filter(item => !(item.address === address && item.memo === memo && item.time === formattedTime));
-                            localStorage.setItem('historyData', JSON.stringify(updatedData));
+                    const now = new Date();
+                    const formattedTime = `${now.getFullYear()}年${(now.getMonth() +1).toString().padStart(2, '0')}月${now.getDate().toString().padStart(2, '0')}日${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+                    timeCell.textContent = formattedTime;
+                    lngCell.textContent = lng.toFixed(6);
+                    latCell.textContent = lat.toFixed(6);
+                    addressCell.textContent = address || '未取得';
+                    memoCell.textContent = memo;
+                    updateButton.textContent = '更新';
+                    deleteButton.textContent = '削除';
+
+                    updateButton.addEventListener('click', function() {
+                        const endpoint = 'https://nominatim.openstreetmap.org/reverse';
+                        const params = new URLSearchParams({
+                            lat: lat,
+                            lon: lng,
+                            format: 'json',
+                            'accept-language': 'ja'
                         });
 
-                        deleteCell.appendChild(deleteButton);
-                        row.appendChild(timeCell);
-                        row.appendChild(addressCell);
-                        row.appendChild(memoCell);
-                        row.appendChild(deleteCell);
-                        historyTableBody.appendChild(row);
+                        const url = `${endpoint}?${params.toString()}`;
 
-                        const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
-                        savedData.push({ time: formattedTime, address, memo });
-                        localStorage.setItem('historyData', JSON.stringify(savedData));
+                        fetch(url)
+                            .then(response => response.json())
+                            .then(data => {
+                                const newAddress = data.display_name;
+                                addressCell.textContent = newAddress;
+
+                                // localStorageの該当データを更新
+                                const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
+                                for (let item of savedData) {
+                                    if (item.time === formattedTime && item.lng === lng && item.lat === lat && item.memo === memo) {
+                                        item.address = newAddress;
+                                        break;
+                                    }
+                                }
+                                localStorage.setItem('historyData', JSON.stringify(savedData));
+                            })
+                            .catch(error => {
+                                console.error('エラー:', error);
+                                alert('住所の更新に失敗しました。');
+                            });
                     });
+
+                    deleteButton.addEventListener('click', function() {
+                        historyTableBody.removeChild(row);
+                        const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
+                        const updatedData = savedData.filter(item => !(item.time === formattedTime && item.lng === lng && item.lat === lat && item.memo === memo));
+                        localStorage.setItem('historyData', JSON.stringify(updatedData));
+                    });
+
+                    updateCell.appendChild(updateButton);
+                    deleteCell.appendChild(deleteButton);
+                    row.appendChild(timeCell);
+                    row.appendChild(lngCell);
+                    row.appendChild(latCell);
+                    row.appendChild(addressCell);
+                    row.appendChild(memoCell);
+                    row.appendChild(updateCell);
+                    row.appendChild(deleteCell);
+                    historyTableBody.appendChild(row);
 
                     const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
-                    savedData.forEach(item => {
-                        const row = document.createElement('tr');
-                        const timeCell = document.createElement('td');
-                        const addressCell = document.createElement('td');
-                        const memoCell = document.createElement('td');
-                        const deleteCell = document.createElement('td');
-                        const deleteButton = document.createElement('button');
-
-                        timeCell.textContent = item.time;
-                        addressCell.textContent = item.address;
-                        memoCell.textContent = item.memo;
-                        deleteButton.textContent = '削除';
-
-                        deleteButton.addEventListener('click', function() {
-                            historyTableBody.removeChild(row);
-                            const updatedData = savedData.filter(data => !(data.address === item.address && data.memo === item.memo && data.time === item.time));
-                            localStorage.setItem('historyData', JSON.stringify(updatedData));
-                        });
-
-                        deleteCell.appendChild(deleteButton);
-                        row.appendChild(timeCell);
-                        row.appendChild(addressCell);
-                        row.appendChild(memoCell);
-                        row.appendChild(deleteCell);
-                        historyTableBody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error('エラー:', error);
-                    document.getElementById('address').textContent = '住所の取得に失敗しました。';
+                    savedData.push({ time: formattedTime, lng, lat, address, memo });
+                    localStorage.setItem('historyData', JSON.stringify(savedData));
                 });
+            }
+
+            // localStorageからデータを読み込む
+            const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
+            savedData.forEach(item => {
+                const row = document.createElement('tr');
+                const timeCell = document.createElement('td');
+                const lngCell = document.createElement('td');
+                const latCell = document.createElement('td');
+                const addressCell = document.createElement('td');
+                const memoCell = document.createElement('td');
+                const updateCell = document.createElement('td');
+                const deleteCell = document.createElement('td');
+                const updateButton = document.createElement('button');
+                const deleteButton = document.createElement('button');
+
+                timeCell.textContent = item.time || 'N/A';
+                lngCell.textContent = item.lng !== undefined ? item.lng.toFixed(6) : 'N/A';
+                latCell.textContent = item.lat !== undefined ? item.lat.toFixed(6) : 'N/A';
+                addressCell.textContent = item.address || '未取得';
+                memoCell.textContent = item.memo || 'N/A';
+                updateButton.textContent = '更新';
+                deleteButton.textContent = '削除';
+
+                updateButton.addEventListener('click', function() {
+                    const endpoint = 'https://nominatim.openstreetmap.org/reverse';
+                    const params = new URLSearchParams({
+                        lat: item.lat,
+                        lon: item.lng,
+                        format: 'json',
+                        'accept-language': 'ja'
+                    });
+
+                    const url = `${endpoint}?${params.toString()}`;
+
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            const newAddress = data.display_name;
+                            addressCell.textContent = newAddress;
+
+                            // localStorageの該当データを更新
+                            for (let dataItem of savedData) {
+                                if (dataItem.time === item.time && dataItem.lng === item.lng && dataItem.lat === item.lat && dataItem.memo === item.memo) {
+                                    dataItem.address = newAddress;
+                                    break;
+                                }
+                            }
+                            localStorage.setItem('historyData', JSON.stringify(savedData));
+                        })
+                        .catch(error => {
+                            console.error('エラー:', error);
+                            alert('住所の更新に失敗しました。');
+                        });
+                });
+
+                deleteButton.addEventListener('click', function() {
+                    historyTableBody.removeChild(row);
+                    const updatedData = savedData.filter(data => !(data.time === item.time && data.lng === item.lng && data.lat === item.lat && data.memo === item.memo));
+                    localStorage.setItem('historyData', JSON.stringify(updatedData));
+                });
+
+                updateCell.appendChild(updateButton);
+                deleteCell.appendChild(deleteButton);
+                row.appendChild(timeCell);
+                row.appendChild(lngCell);
+                row.appendChild(latCell);
+                row.appendChild(addressCell);
+                row.appendChild(memoCell);
+                row.appendChild(updateCell);
+                row.appendChild(deleteCell);
+                historyTableBody.appendChild(row);
+            });
         }
 
         function errorCallback(error) {
             document.getElementById('address').textContent = '位置情報の取得に失敗しました。';
         }
 
+        // JSONをCSVに変換する関数
         function jsonToCsv(jsonData) {
             const csvRows = [];
             const headers = Object.keys(jsonData[0]);
@@ -228,6 +352,7 @@
             return csvRows.join('\n');
         }
 
+        // エクスポートボタンのイベントリスナー
         document.getElementById('exportButton').addEventListener('click', function() {
             const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
             const csvData = jsonToCsv(savedData);
