@@ -252,7 +252,7 @@
                     row.appendChild(memoCell);
                     row.appendChild(updateCell);
                     row.appendChild(deleteCell);
-                    historyTableBody.appendChild(row);
+                    historyTableBody.insertBefore(row, historyTableBody.firstChild);
 
                     const savedData = JSON.parse(localStorage.getItem('historyData')) || [];
                     savedData.push({ time: formattedTime, lng, lat, address, memo });
